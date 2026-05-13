@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commander une évaluation PSV — À partir de 125 $ | PSV</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+  :root {
+    --navy: #0f2044;
+    --navy-mid: #1a3260;
+    --accent: #c8a96e;
+    --accent-light: #e8c98e;
+    --white: #ffffff;
+    --off-white: #f8f6f1;
+    --text: #1c1c1c;
+    --text-muted: #5a6070;
+    --border: rgba(15,32,68,0.12);
+    --green: #1a6b4a;
+    --red: #c0392b;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--off-white);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    background: var(--navy);
+    padding: 16px 5%;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(200,169,110,0.2);
+  }
+  .nav-logo {
+    font-family: 'Playfair Display', serif;
+    color: var(--white); font-size: 1.3rem; font-weight: 700;
+    text-decoration: none;
+  }
+  .nav-logo span { color: var(--accent); }
+  .lang-toggle {
+    display: flex; gap: 8px;
+  }
+  .lang-btn {
+    background: transparent; border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.6); padding: 6px 14px; border-radius: 4px;
+    font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+    letter-spacing: 0.06em;
+  }
+  .lang-btn.active { background: var(--accent); color: var(--navy); border-color: var(--accent); }
+  .lang-btn:hover:not(.active) { border-color: rgba(255,255,255,0.5); color: var(--white); }
+
+  /* MAIN LAYOUT */
+  .page-wrap {
+    max-width: 860px; margin: 0 auto;
+    padding: 50px 20px 80px;
+  }
+  .page-header { text-align: center; margin-bottom: 40px; }
+  .page-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    color: var(--navy); margin-bottom: 10px;
+  }
+  .page-header p { color: var(--text-muted); font-size: 1rem; }
+
+  /* STEP INDICATOR */
+  .steps-indicator {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; margin-bottom: 40px;
+  }
+  .step-dot {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: relative;
+  }
+  .step-dot .dot {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem; color: var(--text-muted);
+    background: var(--white); transition: all 0.3s; z-index: 1;
+  }
+  .step-dot.active .dot { background: var(--navy); border-color: var(--navy); color: var(--white); }
+  .step-dot.done .dot { background: var(--green); border-color: var(--green); color: var(--white); }
+  .step-dot .label { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; font-weight: 500; }
+  .step-dot.active .label { color: var(--navy); font-weight: 600; }
+  .step-line {
+    width: 80px; height: 2px;
+    background: var(--border); margin-bottom: 22px; transition: background 0.3s;
+  }
+  .step-line.done { background: var(--green); }
+
+  /* CARDS */
+  .card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 12px; padding: 36px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.4s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem; color: var(--navy); margin-bottom: 24px;
+    padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+
+  /* PLAN SELECTOR */
+  .plan-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .plan-option {
+    border: 2px solid var(--border); border-radius: 10px;
+    padding: 24px 20px; cursor: pointer; transition: all 0.2s;
+    position: relative; background: var(--off-white);
+  }
+  .plan-option:hover { border-color: var(--navy); }
+  .plan-option.selected { border-color: var(--navy); background: var(--white); }
+  .plan-option.selected::after {
+    content: '✓';
+    position: absolute; top: 12px; right: 14px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--navy); color: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+  }
+  .plan-badge {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--accent);
+    background: rgba(200,169,110,0.1); border: 1px solid rgba(200,169,110,0.25);
+    padding: 3px 8px; border-radius: 20px; display: inline-block; margin-bottom: 10px;
+  }
+  .plan-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem; color: var(--navy); margin-bottom: 4px;
+  }
+  .plan-price {
+    font-size: 1.6rem; font-weight: 700; color: var(--navy); margin-bottom: 12px;
+  }
+  .plan-price span { font-size: 0.85rem; font-weight: 400; color: var(--text-muted); }
+  .plan-features { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .plan-features li { font-size: 0.85rem; color: var(--text-muted); display: flex; gap: 8px; }
+  .plan-features li::before { content: '✓'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+  /* FORM FIELDS */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label {
+    font-size: 0.82rem; font-weight: 600; color: var(--navy);
+    letter-spacing: 0.03em;
+  }
+  .form-group input, .form-group select {
+    padding: 12px 16px; border-radius: 6px;
+    border: 1.5px solid var(--border);
+    font-size: 0.95rem; color: var(--text);
+    background: var(--white); outline: none;
+    transition: border-color 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--navy); }
+  .form-group input.error { border-color: var(--red); }
+  .error-msg { font-size: 0.78rem; color: var(--red); margin-top: 2px; display: none; }
+  .error-msg.show { display: block; }
+
+  /* SECTION DIVIDER */
+  .section-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 28px 0 20px;
+  }
+  .section-divider span {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-muted); white-space: nowrap;
+  }
+  .section-divider::before, .section-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* STRIPE */
+  #card-element {
+    padding: 13px 16px; border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--white); transition: border-color 0.2s;
+  }
+  #card-element.StripeElement--focus { border-color: var(--navy); }
+  #card-errors {
+    color: var(--red); font-size: 0.82rem; margin-top: 8px; min-height: 20px;
+  }
+
+  /* ORDER SUMMARY */
+  .order-summary {
+    background: var(--navy); border-radius: 10px;
+    padding: 24px; margin-bottom: 20px; color: var(--white);
+  }
+  .summary-title {
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 16px;
+  }
+  .summary-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.9rem;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row.total {
+    font-weight: 700; font-size: 1.1rem; padding-top: 14px; margin-top: 4px;
+    border-top: 1px solid rgba(200,169,110,0.3); border-bottom: none;
+  }
+  .summary-row.total .amount { color: var(--accent); font-family: 'Playfair Display', serif; font-size: 1.4rem; }
+
+  /* SUBMIT BUTTON */
+  .btn-submit {
+    width: 100%; padding: 18px;
+    background: var(--accent); color: var(--navy);
+    border: none; border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s; position: relative;
+  }
+  .btn-submit:hover:not(:disabled) { background: var(--accent-light); transform: translateY(-1px); }
+  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .btn-submit .spinner {
+    display: none; width: 18px; height: 18px;
+    border: 2px solid rgba(15,32,68,0.3); border-top-color: var(--navy);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+  }
+  .btn-submit.loading .btn-text { display: none; }
+  .btn-submit.loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .secure-note {
+    text-align: center; font-size: 0.78rem; color: var(--text-muted);
+    margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+
+  /* SUCCESS */
+  .success-screen {
+    display: none; text-align: center; padding: 60px 20px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .success-screen.show { display: block; }
+  .success-icon {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: rgba(26,107,74,0.1); border: 2px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; margin: 0 auto 24px;
+  }
+  .success-screen h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; color: var(--navy); margin-bottom: 12px;
+  }
+  .success-screen p { color: var(--text-muted); font-size: 1rem; line-height: 1.7; max-width: 480px; margin: 0 auto 8px; }
+  .success-details {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 10px; padding: 24px; max-width: 480px;
+    margin: 28px auto 0; text-align: left;
+  }
+  .success-details h4 { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
+  .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-row strong { color: var(--navy); }
+
+  /* QUANTITY SELECTOR */
+  .qty-wrap {
+    display: flex; align-items: center; gap: 16px; margin-top: 24px;
+    padding: 20px 24px; background: var(--off-white); border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .qty-label { font-size: 0.9rem; font-weight: 600; color: var(--navy); flex: 1; }
+  .qty-controls { display: flex; align-items: center; gap: 12px; }
+  .qty-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1.5px solid var(--navy); background: transparent;
+    color: var(--navy); font-size: 1.2rem; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+  }
+  .qty-btn:hover { background: var(--navy); color: var(--white); }
+  .qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .qty-num { font-size: 1.4rem; font-weight: 700; color: var(--navy); min-width: 32px; text-align: center; }
+  .discount-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(26,107,74,0.1); border: 1px solid rgba(26,107,74,0.25);
+    color: var(--green); border-radius: 20px; padding: 4px 12px;
+    font-size: 0.78rem; font-weight: 700; margin-top: 10px;
+    transition: all 0.3s;
+  }
+  .discount-badge.hidden { display: none; }
+
+  /* CANDIDATE CARDS */
+  .candidates-list { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
+  .candidate-card {
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 20px 20px 16px; position: relative;
+    background: var(--off-white); transition: border-color 0.2s;
+  }
+  .candidate-card:hover { border-color: rgba(15,32,68,0.25); }
+  .candidate-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .candidate-num {
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--accent);
+    background: rgba(200,169,110,0.1); border: 1px solid rgba(200,169,110,0.25);
+    padding: 3px 10px; border-radius: 20px;
+  }
+  .btn-remove-candidate {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 1.1rem; padding: 2px 6px;
+    border-radius: 4px; transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+  }
+  .btn-remove-candidate:hover { color: var(--red); background: rgba(192,57,43,0.08); }
+  .btn-remove-candidate.hidden { visibility: hidden; }
+
+  /* RESPONSIVE */
+  @media (max-width: 640px) {
+    .plan-options { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+    .step-line { width: 40px; }
+    .card { padding: 24px 18px; }
+  }
+</style>
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://psv-global.com/commande.html">
+  <meta property="og:title" content="Commander une évaluation PSV — À partir de 125 $ | PSV">
+  <meta property="og:description" content="Évaluez votre prochain candidat vendeur avec le PSV. Choisissez votre formule, entrez les informations du candidat et recevez votre rapport en moins de 24h.">
+  <meta property="og:image" content="https://psv-global.com/Pierre%20Laberge%20PHD.png">
+  <meta property="og:locale" content="fr_CA">
+  <meta property="og:site_name" content="PSV — Profil de Succès en Vente">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Commander une évaluation PSV — À partir de 125 $ | PSV">
+  <meta name="twitter:description" content="Évaluez votre prochain candidat vendeur avec le PSV. Choisissez votre formule, entrez les informations du candidat et recevez votre rapport en moins de 24h.">
+  <meta name="twitter:image" content="https://psv-global.com/Pierre%20Laberge%20PHD.png">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">PSV<span> ·</span> Profil de Succès en Vente</a>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <h1 data-fr="Commandez votre évaluation PSV" data-en="Order Your PSV Evaluation">Commandez votre évaluation PSV</h1>
+    <p data-fr="Complétez le formulaire ci-dessous. Le lien de test sera envoyé directement à votre candidat." data-en="Complete the form below. The test link will be sent directly to your candidate.">Complétez le formulaire ci-dessous. Le lien de test sera envoyé directement à votre candidat.</p>
+  </div>
+
+  <!-- STEPS -->
+  <div class="steps-indicator">
+    <div class="step-dot active" id="step1-dot">
+      <div class="dot">1</div>
+      <div class="label" data-fr="Formule" data-en="Plan">Formule</div>
+    </div>
+    <div class="step-line" id="line1"></div>
+    <div class="step-dot" id="step2-dot">
+      <div class="dot">2</div>
+      <div class="label" data-fr="Coordonnées" data-en="Details">Coordonnées</div>
+    </div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-dot" id="step3-dot">
+      <div class="dot">3</div>
+      <div class="label" data-fr="Paiement" data-en="Payment">Paiement</div>
+    </div>
+    <div class="step-line" id="line3"></div>
+    <div class="step-dot" id="step4-dot">
+      <div class="dot">4</div>
+      <div class="label" data-fr="Confirmation" data-en="Confirmation">Confirmation</div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div id="order-form">
+
+    <!-- STEP 1: PLAN -->
+    <div class="card" id="step1-card">
+      <h2 data-fr="1. Choisissez votre formule" data-en="1. Choose Your Plan">1. Choisissez votre formule</h2>
+      <div class="plan-options">
+        <div class="plan-option selected" id="plan-essential">
+          <div class="plan-badge" data-fr="Le plus populaire" data-en="Most Popular">Le plus populaire</div>
+          <div class="plan-name" data-fr="PSV Essentiel" data-en="PSV Essential">PSV Essentiel</div>
+          <div class="plan-price">125 $ <span>CAD</span></div>
+          <ul class="plan-features">
+            <li data-fr="Score global et par compétence" data-en="Overall and per-competency score">Score global et par compétence</li>
+            <li data-fr="Niveaux Fort / Moyen / Faible" data-en="Strong / Average / Weak levels">Niveaux Fort / Moyen / Faible</li>
+            <li data-fr="Rapport en moins de 24h" data-en="Report within 24 hours">Rapport en moins de 24h</li>
+            <li data-fr="Indicateurs clés de performance" data-en="Key performance indicators">Indicateurs clés de performance</li>
+          </ul>
+        </div>
+        <div class="plan-option" id="plan-strategic">
+          <div class="plan-badge" data-fr="Analyse approfondie" data-en="In-Depth Analysis">Analyse approfondie</div>
+          <div class="plan-name" data-fr="PSV Stratégique" data-en="PSV Strategic">PSV Stratégique</div>
+          <div class="plan-price">495 $ <span>CAD</span></div>
+          <ul class="plan-features">
+            <li data-fr="Tout le contenu Essentiel" data-en="Everything in Essential">Tout le contenu Essentiel</li>
+            <li data-fr="Recommandation Go / No-go" data-en="Go / No-go recommendation">Recommandation Go / No-go</li>
+            <li data-fr="Coaching personnalisé" data-en="Personalized coaching">Coaching personnalisé</li>
+            <li data-fr="Profil psychologique approfondi" data-en="In-depth psychological profile">Profil psychologique approfondi</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: CONTACT INFO -->
+    <div class="card" id="step2-card">
+      <h2 data-fr="2. Vos coordonnées (gestionnaire)" data-en="2. Your Details (Manager)">2. Vos coordonnées (gestionnaire)</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label data-fr="Prénom *" data-en="First Name *">Prénom *</label>
+          <input type="text" id="mgr-firstname" data-placeholder-fr="Jean" data-placeholder-en="John" placeholder="Jean" />
+          <span class="error-msg" id="err-mgr-firstname" data-fr="Requis" data-en="Required">Requis</span>
+        </div>
+        <div class="form-group">
+          <label data-fr="Nom *" data-en="Last Name *">Nom *</label>
+          <input type="text" id="mgr-lastname" data-placeholder-fr="Tremblay" data-placeholder-en="Smith" placeholder="Tremblay" />
+          <span class="error-msg" id="err-mgr-lastname" data-fr="Requis" data-en="Required">Requis</span>
+        </div>
+        <div class="form-group full">
+          <label data-fr="Courriel *" data-en="Email *">Courriel *</label>
+          <input type="email" id="mgr-email" data-placeholder-fr="jean.tremblay@entreprise.com" data-placeholder-en="john.smith@company.com" placeholder="jean.tremblay@entreprise.com" />
+          <span class="error-msg" id="err-mgr-email" data-fr="Courriel invalide" data-en="Invalid email">Courriel invalide</span>
+        </div>
+        <div class="form-group full">
+          <label data-fr="Entreprise" data-en="Company">Entreprise</label>
+          <input type="text" id="mgr-company" data-placeholder-fr="Nom de votre entreprise" data-placeholder-en="Your company name" placeholder="Nom de votre entreprise" />
+        </div>
+      </div>
+
+      <div class="section-divider">
+        <span data-fr="Candidats à évaluer" data-en="Candidates to Evaluate">Candidats à évaluer</span>
+      </div>
+
+      <!-- QUANTITY SELECTOR -->
+      <div class="qty-wrap">
+        <div>
+          <div class="qty-label" data-fr="Nombre de candidats" data-en="Number of Candidates">Nombre de candidats</div>
+          <div class="discount-badge hidden" id="discount-badge">🎉 <span id="discount-text"></span></div>
+        </div>
+        <div class="qty-controls">
+          <button class="qty-btn" id="qty-minus" disabled>−</button>
+          <span class="qty-num" id="qty-display">1</span>
+          <button class="qty-btn" id="qty-plus">+</button>
+        </div>
+      </div>
+
+      <!-- CANDIDATE CARDS -->
+      <div class="candidates-list" id="candidates-list"></div>
+
+    </div>
+
+    <!-- STEP 3: PAYMENT -->
+    <div class="card" id="step3-card">
+      <h2 data-fr="3. Paiement sécurisé" data-en="3. Secure Payment">3. Paiement sécurisé</h2>
+
+      <div class="order-summary">
+        <div class="summary-title" data-fr="RÉSUMÉ DE COMMANDE" data-en="ORDER SUMMARY">RÉSUMÉ DE COMMANDE</div>
+        <div class="summary-row">
+          <span id="summary-plan-name" data-fr="PSV Essentiel" data-en="PSV Essential">PSV Essentiel</span>
+          <span id="summary-plan-price">125,00 $ CAD</span>
+        </div>
+        <div class="summary-row">
+          <span data-fr="Candidats" data-en="Candidates">Candidats</span>
+          <span id="summary-candidates-count">1</span>
+        </div>
+        <div class="summary-row" id="summary-discount-row" style="display:none; color: #a8d5b8;">
+          <span id="summary-discount-label">Rabais volume</span>
+          <span id="summary-discount-amount">— 0,00 $</span>
+        </div>
+        <div class="summary-row">
+          <span data-fr="Sous-total" data-en="Subtotal">Sous-total</span>
+          <span id="summary-subtotal">125,00 $ CAD</span>
+        </div>
+        <div class="summary-row">
+          <span data-fr="TPS (5%)" data-en="GST (5%)">TPS (5%)</span>
+          <span id="summary-tps">6,25 $</span>
+        </div>
+        <div class="summary-row">
+          <span data-fr="TVQ (9,975%)" data-en="QST (9.975%)">TVQ (9,975%)</span>
+          <span id="summary-tvq">12,47 $</span>
+        </div>
+        <div class="summary-row total">
+          <span data-fr="Total (taxes incluses)" data-en="Total (taxes included)">Total (taxes incluses)</span>
+          <span class="amount" id="summary-total">143,72 $</span>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label data-fr="Informations de carte" data-en="Card Information">Informations de carte</label>
+        <div id="card-element"></div>
+        <div id="card-errors"></div>
+      </div>
+
+      <button class="btn-submit" id="submit-btn">
+        <span class="btn-text" data-fr="Payer et envoyer le test" data-en="Pay & Send the Test">Payer et envoyer le test</span>
+        <div class="spinner"></div>
+      </button>
+      <p class="secure-note">🔒 <span data-fr="Paiement sécurisé par Stripe — vos données sont protégées" data-en="Secure payment by Stripe — your data is protected">Paiement sécurisé par Stripe — vos données sont protégées</span></p>
+    </div>
+
+  </div><!-- end order-form -->
+
+  <!-- SUCCESS -->
+  <div class="success-screen" id="success-screen">
+    <div class="success-icon">✓</div>
+    <h2 data-fr="Commande confirmée !" data-en="Order Confirmed!">Commande confirmée !</h2>
+    <p data-fr="Un courriel de confirmation individuel a été envoyé à chaque candidat. Vous recevrez également une copie récapitulative." data-en="An individual confirmation email has been sent to each candidate. You will also receive a summary copy.">Un courriel de confirmation individuel a été envoyé à chaque candidat. Vous recevrez également une copie récapitulative.</p>
+    <div class="success-details" id="success-details"></div>
+    <p style="margin-top: 24px;">
+      <a href="index.html" style="color: var(--navy); font-weight: 600; text-decoration: underline;" data-fr="← Retour à l'accueil" data-en="← Back to Home">← Retour à l'accueil</a>
+    </p>
+  </div>
+
+</div><!-- end page-wrap -->
+
+<script>
+  // ── STRIPE SETUP ──
+  const stripe = Stripe('pk_live_51RP1UQGHmacQd9jb9tUajIDIeqS3BXzKZFr1ZuIIyruQXSiKEVfe6o0gzl13ihqVOzGuXhZaoNiGYpWfSpdUfgXv00hC2Vbuoh');
+  const elements = stripe.elements();
+  const cardElement = elements.create('card', {
+    style: {
+      base: {
+        fontFamily: 'DM Sans, sans-serif',
+        fontSize: '15px',
+        color: '#1c1c1c',
+        '::placeholder': { color: '#a0aab4' }
+      }
+    }
+  });
+  cardElement.mount('#card-element');
+  cardElement.on('change', (e) => {
+    document.getElementById('card-errors').textContent = e.error ? e.error.message : '';
+  });
+
+  // ── PLAN DATA ──
+  const plans = {
+    essential: {
+      priceId: 'price_1SXk5mGHmacQd9jbLdZW15Dh',
+      nameFr: 'PSV Essentiel', nameEn: 'PSV Essential',
+      base: 125.00
+    },
+    strategic: {
+      priceId: 'price_1TBePpGHmacQd9jb6hxpF9q7',
+      nameFr: 'PSV Stratégique', nameEn: 'PSV Strategic',
+      base: 495.00
+    }
+  };
+  let selectedPlan = 'essential';
+  let currentLang = 'fr';
+  let qty = 1;
+
+  // ── EVENT LISTENERS (remplacent tous les onclick="..." inline) ──
+  document.getElementById('qty-minus').addEventListener('click', () => changeQty(-1));
+  document.getElementById('qty-plus').addEventListener('click',  () => changeQty(1));
+  document.getElementById('plan-essential').addEventListener('click', () => selectPlan('essential'));
+  document.getElementById('plan-strategic').addEventListener('click',  () => selectPlan('strategic'));
+  document.getElementById('submit-btn').addEventListener('click', handlePayment);
+
+  // ── VOLUME DISCOUNT ──
+  function getDiscount(n) {
+    if (n >= 10) return 0.20;
+    if (n >= 5)  return 0.15;
+    if (n >= 2)  return 0.10;
+    return 0;
+  }
+
+  function fmt(n) {
+    return n.toFixed(2).replace('.', ',') + ' $';
+  }
+
+  // ── QUANTITY ──
+  function changeQty(delta) {
+    qty = Math.max(1, qty + delta);
+    document.getElementById('qty-display').textContent = qty;
+    document.getElementById('qty-minus').disabled = qty <= 1;
+    syncCandidateCards();
+    updateSummary();
+  }
+
+  // ── CANDIDATE CARDS ──
+  function syncCandidateCards() {
+    const list = document.getElementById('candidates-list');
+    const current = list.querySelectorAll('.candidate-card').length;
+    if (qty > current) {
+      for (let i = current; i < qty; i++) addCandidateCard(i);
+    } else {
+      const cards = list.querySelectorAll('.candidate-card');
+      for (let i = qty; i < current; i++) cards[i].remove();
+    }
+    updateRemoveButtons();
+  }
+
+  function addCandidateCard(index) {
+    const list = document.getElementById('candidates-list');
+    const isFr = currentLang === 'fr';
+    const card = document.createElement('div');
+    card.className = 'candidate-card';
+    card.dataset.index = index;
+    card.innerHTML = `
+      <div class="candidate-card-header">
+        <span class="candidate-num">${isFr ? 'Candidat' : 'Candidate'} ${index + 1}</span>
+        <button class="btn-remove-candidate" onclick="removeCandidate(this)" title="${isFr ? 'Retirer' : 'Remove'}">✕</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>${isFr ? 'Prénom *' : 'First Name *'}</label>
+          <input type="text" class="cand-firstname" placeholder="${isFr ? 'Marie' : 'Emily'}" />
+          <span class="error-msg">${isFr ? 'Requis' : 'Required'}</span>
+        </div>
+        <div class="form-group">
+          <label>${isFr ? 'Nom *' : 'Last Name *'}</label>
+          <input type="text" class="cand-lastname" placeholder="${isFr ? 'Dupont' : 'Johnson'}" />
+          <span class="error-msg">${isFr ? 'Requis' : 'Required'}</span>
+        </div>
+        <div class="form-group full">
+          <label>${isFr ? 'Courriel *' : 'Email *'}</label>
+          <input type="email" class="cand-email" placeholder="${isFr ? 'marie.dupont@email.com' : 'emily.johnson@email.com'}" />
+          <span class="error-msg">${isFr ? 'Courriel invalide' : 'Invalid email'}</span>
+        </div>
+        <div class="form-group full">
+          <label>${isFr ? 'Poste visé' : 'Position Applied For'}</label>
+          <input type="text" class="cand-position" placeholder="${isFr ? 'Ex: Représentant des ventes B2B' : 'Ex: B2B Sales Representative'}" />
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  }
+
+  function removeCandidate(btn) {
+    const card = btn.closest('.candidate-card');
+    card.remove();
+    qty = document.querySelectorAll('.candidate-card').length;
+    document.getElementById('qty-display').textContent = qty;
+    document.getElementById('qty-minus').disabled = qty <= 1;
+    renumberCards();
+    updateRemoveButtons();
+    updateSummary();
+  }
+
+  function renumberCards() {
+    const isFr = currentLang === 'fr';
+    document.querySelectorAll('.candidate-card').forEach((card, i) => {
+      card.dataset.index = i;
+      card.querySelector('.candidate-num').textContent = `${isFr ? 'Candidat' : 'Candidate'} ${i + 1}`;
+    });
+  }
+
+  function updateRemoveButtons() {
+    const btns = document.querySelectorAll('.btn-remove-candidate');
+    btns.forEach(btn => btn.classList.toggle('hidden', qty <= 1));
+  }
+
+  // ── PLAN SELECTION ──
+  function selectPlan(plan) {
+    selectedPlan = plan;
+    document.getElementById('plan-essential').classList.toggle('selected', plan === 'essential');
+    document.getElementById('plan-strategic').classList.toggle('selected', plan === 'strategic');
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const p = plans[selectedPlan];
+    const discount = getDiscount(qty);
+    const priceUnit = p.base;
+    const subtotalBrut = priceUnit * qty;
+    const discountAmt = subtotalBrut * discount;
+    const subtotal = subtotalBrut - discountAmt;
+    const tps = subtotal * 0.05;
+    const tvq = subtotal * 0.09975;
+    const total = subtotal + tps + tvq;
+
+    document.getElementById('summary-plan-name').textContent = currentLang === 'fr' ? p.nameFr : p.nameEn;
+    document.getElementById('summary-plan-price').textContent = fmt(priceUnit).replace(' $', ' $ CAD');
+    document.getElementById('summary-candidates-count').textContent = qty + ' × ' + fmt(priceUnit).replace(' $','') + ' $';
+    document.getElementById('summary-subtotal').textContent = fmt(subtotal).replace(' $', ' $ CAD');
+    document.getElementById('summary-tps').textContent = fmt(tps);
+    document.getElementById('summary-tvq').textContent = fmt(tvq);
+    document.getElementById('summary-total').textContent = fmt(total).replace(' $', ' $ CAD');
+
+    const discountRow = document.getElementById('summary-discount-row');
+    const discountBadge = document.getElementById('discount-badge');
+    const discountText = document.getElementById('discount-text');
+    if (discount > 0) {
+      const pct = Math.round(discount * 100);
+      const label = currentLang === 'fr' ? `Rabais volume (${pct}%)` : `Volume discount (${pct}%)`;
+      document.getElementById('summary-discount-label').textContent = label;
+      document.getElementById('summary-discount-amount').textContent = '− ' + fmt(discountAmt);
+      discountRow.style.display = 'flex';
+      discountText.textContent = currentLang === 'fr' ? `Rabais de ${pct}% appliqué !` : `${pct}% discount applied!`;
+      discountBadge.classList.remove('hidden');
+    } else {
+      discountRow.style.display = 'none';
+      discountBadge.classList.add('hidden');
+    }
+  }
+
+  // ── LANG TOGGLE ──
+  function setLang(lang) {
+    currentLang = lang;
+    document.querySelectorAll('[data-fr]').forEach(el => {
+      el.textContent = el.getAttribute(`data-${lang}`) || el.textContent;
+    });
+    // Swap placeholders on manager inputs
+    document.querySelectorAll('input[data-placeholder-fr]').forEach(el => {
+      el.placeholder = el.getAttribute(`data-placeholder-${lang}`);
+    });
+    // Rebuild candidate cards to reflect new language placeholders
+    const list = document.getElementById('candidates-list');
+    const values = [];
+    list.querySelectorAll('.candidate-card').forEach(card => {
+      values.push({
+        firstname: card.querySelector('.cand-firstname').value,
+        lastname:  card.querySelector('.cand-lastname').value,
+        email:     card.querySelector('.cand-email').value,
+        position:  card.querySelector('.cand-position').value,
+      });
+    });
+    list.innerHTML = '';
+    for (let i = 0; i < qty; i++) addCandidateCard(i);
+    list.querySelectorAll('.candidate-card').forEach((card, i) => {
+      if (values[i]) {
+        card.querySelector('.cand-firstname').value = values[i].firstname;
+        card.querySelector('.cand-lastname').value  = values[i].lastname;
+        card.querySelector('.cand-email').value     = values[i].email;
+        card.querySelector('.cand-position').value  = values[i].position;
+      }
+    });
+    updateRemoveButtons();
+    updateSummary();
+  }
+
+  function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+  function showError(id, show) {
+    const el = document.getElementById(id);
+    el.classList.toggle('show', show);
+    const input = document.getElementById(id.replace('err-', ''));
+    if (input) input.classList.toggle('error', show);
+  }
+  function validate() {
+    let ok = true;
+    // Validate manager fields
+    const mgrFields = [
+      { id: 'mgr-firstname', err: 'err-mgr-firstname', check: v => v.trim().length > 0 },
+      { id: 'mgr-lastname',  err: 'err-mgr-lastname',  check: v => v.trim().length > 0 },
+      { id: 'mgr-email',     err: 'err-mgr-email',     check: v => validateEmail(v) },
+    ];
+    mgrFields.forEach(f => {
+      const val = document.getElementById(f.id).value;
+      const valid = f.check(val);
+      showError(f.err, !valid);
+      if (!valid) ok = false;
+    });
+    // Validate each candidate card
+    document.querySelectorAll('.candidate-card').forEach(card => {
+      const fn = card.querySelector('.cand-firstname');
+      const ln = card.querySelector('.cand-lastname');
+      const em = card.querySelector('.cand-email');
+      const msgs = card.querySelectorAll('.error-msg');
+      [fn, ln, em].forEach((input, i) => {
+        let valid = input.value.trim().length > 0;
+        if (i === 2) valid = validateEmail(input.value);
+        input.classList.toggle('error', !valid);
+        msgs[i].classList.toggle('show', !valid);
+        if (!valid) ok = false;
+      });
+    });
+    return ok;
+  }
+
+  // ── PAYMENT ──
+  async function handlePayment() {
+    if (!validate()) {
+      document.getElementById('step2-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.classList.add('loading');
+    document.getElementById('card-errors').textContent = '';
+
+    const mgrFirst   = document.getElementById('mgr-firstname').value.trim();
+    const mgrLast    = document.getElementById('mgr-lastname').value.trim();
+    const mgrEmail   = document.getElementById('mgr-email').value.trim();
+    const mgrCompany = document.getElementById('mgr-company').value.trim();
+    const plan       = plans[selectedPlan];
+
+    // Collect candidates
+    const candidates = [];
+    document.querySelectorAll('.candidate-card').forEach(card => {
+      candidates.push({
+        prenom: card.querySelector('.cand-firstname').value.trim(),
+        nom:    card.querySelector('.cand-lastname').value.trim(),
+        email:  card.querySelector('.cand-email').value.trim(),
+        poste:  card.querySelector('.cand-position').value.trim() || 'Non précisé'
+      });
+    });
+
+    try {
+      // ── ÉTAPE 1 : Demander au SERVEUR de créer le PaymentIntent avec le bon montant ──
+      // Le montant est calculé côté serveur (PHP) — impossible à falsifier côté client
+      const intentRes = await fetch('/.netlify/functions/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan:                   selectedPlan,
+          qty:                    qty,
+          gestionnaire_prenom:    mgrFirst,
+          gestionnaire_nom:       mgrLast,
+          gestionnaire_email:     mgrEmail,
+          gestionnaire_entreprise: mgrCompany || 'Non précisé',
+        })
+      });
+
+      const intentData = await intentRes.json();
+
+      if (!intentData.success || !intentData.client_secret) {
+        document.getElementById('card-errors').textContent =
+          intentData.message || (currentLang === 'fr' ? 'Erreur lors de la création du paiement.' : 'Error creating payment.');
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        return;
+      }
+
+      // ── ÉTAPE 2 : Confirmer le paiement avec la carte (Stripe débite réellement la carte) ──
+      const { error: stripeError } = await stripe.confirmCardPayment(intentData.client_secret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name:    `${mgrFirst} ${mgrLast}`,
+            email:   mgrEmail,
+            address: { country: 'CA', state: 'QC' }
+          }
+        }
+      });
+
+      if (stripeError) {
+        document.getElementById('card-errors').textContent = stripeError.message;
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        return;
+      }
+
+      // ── ÉTAPE 3 : Paiement confirmé — envoyer les courriels ──
+      // On utilise les montants retournés par le serveur (source de vérité)
+      const discount    = getDiscount(qty);
+      const subtotal    = intentData.subtotal;
+      const tps         = intentData.tps;
+      const tvq         = intentData.tvq;
+      const total       = intentData.total;
+      const discountAmt = intentData.discount_amt;
+
+      const fmt = n => n.toFixed(2).replace('.', ',');
+
+      await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gestionnaire_prenom:     mgrFirst,
+          gestionnaire_nom:        mgrLast,
+          gestionnaire_email:      mgrEmail,
+          gestionnaire_entreprise: mgrCompany || 'Non précisé',
+          candidats:               candidates,
+          formule:                 currentLang === 'fr' ? plan.nameFr : plan.nameEn,
+          prix_unitaire:           `${plan.base.toFixed(2)} $ CAD`,
+          nombre_candidats:        qty,
+          rabais_pct:              intentData.discount_pct,
+          rabais_montant:          `${fmt(discountAmt)} $`,
+          sous_total:              fmt(subtotal),
+          tps:                     fmt(tps),
+          tvq:                     fmt(tvq),
+          montant_total:           fmt(total),
+          langue:                  currentLang,
+        })
+      });
+
+      showSuccess({ mgrFirst, mgrLast, mgrEmail, mgrCompany, candidates, plan, discount, discountAmt, subtotal, tps, tvq, total });
+
+    } catch (err) {
+      document.getElementById('card-errors').textContent = currentLang === 'fr'
+        ? 'Une erreur est survenue. Veuillez réessayer.'
+        : 'An error occurred. Please try again.';
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  }
+
+  function showSuccess({ mgrFirst, mgrLast, mgrEmail, mgrCompany, candidates, plan, discount, discountAmt, subtotal, tps, tvq, total }) {
+    document.getElementById('order-form').style.display = 'none';
+    const s = document.getElementById('success-screen');
+    s.classList.add('show');
+
+    const isFr = currentLang === 'fr';
+    const pct = Math.round(discount * 100);
+
+    const candidateRows = candidates.map((c, i) => `
+      <div class="detail-row">
+        <span>${isFr ? 'Candidat' : 'Candidate'} ${i + 1}</span>
+        <strong>${c.prenom} ${c.nom} — ${c.email}</strong>
+      </div>
+    `).join('');
+
+    document.getElementById('success-details').innerHTML = `
+      <h4>${isFr ? 'DÉTAILS DE LA COMMANDE' : 'ORDER DETAILS'}</h4>
+      <div class="detail-row"><span>${isFr ? 'Formule' : 'Plan'}</span><strong>${isFr ? plan.nameFr : plan.nameEn}</strong></div>
+      <div class="detail-row"><span>${isFr ? 'Gestionnaire' : 'Manager'}</span><strong>${mgrFirst} ${mgrLast}</strong></div>
+      <div class="detail-row"><span>${isFr ? 'Courriel gestionnaire' : 'Manager Email'}</span><strong>${mgrEmail}</strong></div>
+      ${mgrCompany ? `<div class="detail-row"><span>${isFr ? 'Entreprise' : 'Company'}</span><strong>${mgrCompany}</strong></div>` : ''}
+      <div class="detail-row"><span>${isFr ? 'Nombre de candidats' : 'Number of candidates'}</span><strong>${candidates.length}</strong></div>
+      ${candidateRows}
+      ${pct > 0 ? `<div class="detail-row"><span>${isFr ? `Rabais volume (${pct}%)` : `Volume discount (${pct}%)`}</span><strong style="color:var(--green)">− ${discountAmt.toFixed(2).replace('.',',')} $</strong></div>` : ''}
+      <div class="detail-row"><span>${isFr ? 'Sous-total' : 'Subtotal'}</span><strong>${subtotal.toFixed(2).replace('.',',')} $ CAD</strong></div>
+      <div class="detail-row"><span>${isFr ? 'TPS (5%)' : 'GST (5%)'}</span><strong>${tps.toFixed(2).replace('.',',')} $</strong></div>
+      <div class="detail-row"><span>${isFr ? 'TVQ (9,975%)' : 'QST (9.975%)'}</span><strong>${tvq.toFixed(2).replace('.',',')} $</strong></div>
+      <div class="detail-row"><span>${isFr ? 'Total payé' : 'Total paid'}</span><strong>${total.toFixed(2).replace('.',',')} $ CAD</strong></div>
+    `;
+
+    // Update step indicators
+    ['step1-dot','step2-dot','step3-dot'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+      document.getElementById(id).classList.add('done');
+    });
+    document.getElementById('step4-dot').classList.add('active');
+    ['line1','line2','line3'].forEach(id => document.getElementById(id).classList.add('done'));
+
+    s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Auto-select plan from URL param
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlPlan = urlParams.get('plan');
+  if (urlPlan === 'strategic') selectPlan('strategic');
+
+  // Init: create first candidate card
+  syncCandidateCards();
+  updateSummary();
+</script>
+</body>
+<script src="/chatbot.js"></script>
+</html>
