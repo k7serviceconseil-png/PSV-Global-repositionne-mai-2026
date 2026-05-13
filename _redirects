@@ -1,0 +1,20 @@
+# Redirections anciennes URLs .html → dossiers propres
+/a-propos.html /a-propos/ 301
+/blog.html /blog/ 301
+/calculateur.html /calculateur/ 301
+/commande.html /commande/ 301
+/pages-piliers.html /guides/ 301
+/comment-fonctionne-le-psv.html /comment-fonctionne-le-psv/ 301
+/comment-recruter-un-bon-vendeur.html /comment-recruter-un-bon-vendeur/ 301
+/comment-evaluer-un-vendeur-avant-l-embauche.html /comment-evaluer-un-vendeur-avant-l-embauche/ 301
+/les-competences-des-meilleurs-vendeurs.html /les-competences-des-meilleurs-vendeurs/ 301
+/le-vrai-cout-dune-mauvaise-embauche-en-vente.html /le-vrai-cout-dune-mauvaise-embauche-en-vente/ 301
+
+# pages-piliers → guides
+/pages-piliers/ /guides/ 301
+
+# Redirections doublons blog (contenu identique → URL canonique)
+/blog/comment-evaluer-une-equipe-de-vente/ /blog/comment-evaluer-equipe-de-vente/ 301
+/blog/comment-mieux-coacher-un-representant-en-difficulte/ /blog/mieux-coacher-representant-en-difficulte/ 301
+/blog/comment-reduire-le-risque-dune-mauvaise-embauche/ /blog/reduire-risque-mauvaise-embauche-vente/ 301
+/blog/les-qualites-des-meilleurs-representants/ /blog/qualites-meilleurs-representants-commerciaux/ 301
